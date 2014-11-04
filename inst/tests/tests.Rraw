@@ -5570,6 +5570,17 @@ test(1448.6, ans1[c(3,3)], fans2(DT, c("V3", "V3")))        # using duplicate co
 test(1448.7, shallow(DT, integer(0)), null.data.table())    # length-0 input work as intended as well.
 test(1448.8, shallow(DT, character(0)), null.data.table())  # length-0 input work as intended as well.
 
+# Fix for #893
+if ("package:reshape2" %in% search()) {
+    dt <- data.table(
+        x = factor("a", levels = c("a", "b")),
+        y = factor("b", levels = c("a", "b")),
+        z = 1
+    )
+    test(1449.1, dcast.data.table(dt, y ~ x, drop = FALSE, value.var="z"), 
+                 data.table(dcast(dt, y ~ x, drop = FALSE, value.var="z"), key="y"))
+}
+
 ##########################
 
 
