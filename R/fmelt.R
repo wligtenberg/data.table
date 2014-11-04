@@ -15,9 +15,7 @@ melt.data.table <- function(data, id.vars, measure.vars, variable.name = "variab
             variable.name, value.name, 
             as.logical(na.rm), as.logical(drop.levels), 
             as.logical(verbose));
-    setattr(ans, "row.names", .set_row_names(length(ans[[1L]])))
-    setattr(ans, "class", c("data.table", "data.frame"))
-    alloc.col(ans)
+    setDT(ans)
     if (any(duplicated(names(ans)))) {
         message("Duplicate column names found in molten data.table. Setting unique names using 'make.names'")   
         setnames(ans, make.unique(names(ans)))
