@@ -316,7 +316,7 @@ void preprocess(SEXP DT, SEXP id, SEXP measure, SEXP varnames, SEXP valnames, Rb
     data->leach = malloc(sizeof(int) * data->lvalues);
     data->isidentical = malloc(sizeof(int) * data->lvalues);
     data->isfactor = calloc(sizeof(int), data->lvalues);
-    data->maxtype = malloc(sizeof(SEXPTYPE) * data->lvalues);
+    data->maxtype = calloc(sizeof(SEXPTYPE), data->lvalues);
     for (i=0; i<data->lvalues; i++) {
         tmp = VECTOR_ELT(data->valuecols, i);
         data->leach[i] = length(tmp);
@@ -676,6 +676,7 @@ SEXP fmelt(SEXP DT, SEXP id, SEXP measure, SEXP varfactor, SEXP valfactor, SEXP 
         setAttrib(ans, R_NamesSymbol, ansnames);
     }
     Free(data.isfactor);
+    Free(data.maxtype);
     UNPROTECT(protecti);
     return(ans);
 }
