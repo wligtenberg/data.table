@@ -22,6 +22,7 @@ melt.data.table <- function(data, id.vars, measure.vars, variable.name = "variab
         message("Duplicate column names found in molten data.table. Setting unique names using 'make.names'")   
         setnames(ans, make.unique(names(ans)))
     }
+    setattr(ans, 'sorted', NULL)
     ans
 }
 
