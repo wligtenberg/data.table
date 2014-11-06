@@ -20,6 +20,7 @@ SEXP SelfRefSymbol;
 // assign.c
 SEXP allocNAVector(SEXPTYPE type, R_len_t n);
 void savetl_init(), savetl(SEXP s), savetl_end();
+SEXP shallowwrapper(SEXP dt, SEXP cols);
 
 // forder.c
 int StrCmp(SEXP x, SEXP y);
@@ -50,7 +51,7 @@ void setselfref(SEXP);
 // fmelt.c
 SEXP seq_int(int n, int start);
 SEXP set_diff(SEXP x, int n);
-SEXP which(SEXP x);
+SEXP which(SEXP x, Rboolean bool);
 
 // assign.c
 SEXP alloccol(SEXP dt, R_len_t n, Rboolean verbose);
@@ -63,3 +64,9 @@ SEXP bmerge(SEXP left, SEXP right, SEXP leftcols, SEXP rightcols, SEXP isorted, 
 
 // fcast.c
 SEXP coerce_to_char(SEXP s, SEXP env);
+
+// frank.c
+SEXP dt_na(SEXP x, SEXP cols);
+
+// rbindlist.c
+SEXP combineFactorLevels(SEXP factorLevels, int * factorType, Rboolean * isRowOrdered);

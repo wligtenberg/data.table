@@ -2865,12 +2865,26 @@ if ("package:reshape2" %in% search()) {
     ans1 = cbind(DT[, c(1,2,8), with=FALSE], variable=factor("l1"))
     ans1[, value := DT$l1]
     test(1036, melt(DT, id=c("i1", "i2", "l2"), measure=c("l1")), ans1)
-    ans2 = data.table(c1=DT$c1, variable=rep(c("d1", "d2"), each=6), value=as.numeric(c(DT$d1, DT$d2)))[!is.na(value)]
+    # melt retains attributes if all are of same type (new)
+    ans2 = data.table(c1=DT$c1, variable=rep(c("d1", "d2"), each=6), value=as.Date(c(DT$d1, DT$d2)))[!is.na(value)]
     test(1037, melt(DT, id=4, measure=5:6, na.rm=TRUE, variable.factor=FALSE), ans2)
     DT2 <- data.table(x=1:5, y=1+5i) # unimplemented class
     test(1038, melt(DT2, id=1), error="Unknown column type 'complex'")
     
-    # TO DO: more tests
+    # more tests
+    DT[, f2 := factor(c("z", "a", "x", "z", "a", "a"), ordered=TRUE)]
+    DT[, id := 1:6]
+    ans1 = cbind(melt(DT, id="id", measure=5:6, variable.name="variable1", value.name="value1"), melt(DT, id=integer(0), measure=7:8, variable.name="variable2", value.name="value2"))
+    test(1038.2, ans1, melt(DT, id="id", measure=list(5:6, 7:8)))
+    test(1038.3, ans1, melt(DT, id="id", measure=list(5:6, 7:8), na.rm=TRUE)) # should've no effect
+    # melt retains ordered factors!
+    test(1038.4, melt(DT, id="id", measure=c("f1", "f2"), value.factor=TRUE)$value, factor(c(as.character(DT$f1), as.character(DT$f2)), ordered=TRUE))
+    # if measure is integer(0) just returns a duplicated data.table with all idcols
+    test(1038.5, melt(DT, id=1:6, measure=integer(0)), shallow(DT, 1:6))
+    # measure.var list with single entry recycles to maximum length
+    ans = cbind(melt(DT, id="id", measure=c("c1", "c1")), melt(DT, id=integer(0), measure=c("f1", "f2")))
+    setnames(ans, c("id", "variable1", "value1", "variable2", "value2"))
+    test(1038.6, melt(DT, id="id", measure=list("c1", c("f1", "f2"))), ans)
 }
 
 # sorting and grouping of Inf, -Inf, NA and NaN,  #4684, #4815 & #4883
@@ -5054,7 +5068,7 @@ if ("package:reshape2" %in% search()) {
     foo = function(input, by, var) {
         melt(input, id.vars = by, measure.vars=var)
     }
-    test(1371.1, foo(DT, by="x"), data.table(x=rep(DT$x, 2L), variable=factor(rep(c("y", "v"), each=9L), levels=c("y", "v")), value=c(DT$y, DT$v)), warning="All 'measure.vars are NOT of the SAME type.")
+    test(1371.1, foo(DT, by="x"), data.table(x=rep(DT$x, 2L), variable=factor(rep(c("y", "v"), each=9L), levels=c("y", "v")), value=c(DT$y, DT$v)), warning="are not all of the same type. By order of hierarchy, the molten data value column will be of type 'double'")
     test(1371.2, foo(DT), data.table(x=rep(DT$x, 2L), variable=factor(rep(c("y", "v"), each=9L), levels=c("y", "v")), value=c(DT$y, DT$v)), warning="To be consistent with reshape2's melt, id.vars and")
 }
 
