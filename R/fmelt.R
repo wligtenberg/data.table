@@ -9,6 +9,10 @@ melt.data.table <- function(data, id.vars, measure.vars, variable.name = "variab
     if (!is.data.table(data)) stop("'data' must be a data.table")
     if (missing(id.vars)) id.vars=NULL
     if (missing(measure.vars)) measure.vars = NULL
+    if (is.list(measure.vars)) {
+        if (length(variable.name) == 1L) variable.name = paste(variable.name, seq_along(measure.vars), sep="")
+        if (length(value.name) == 1L)  value.name = paste(value.name, seq_along(measure.vars), sep="")
+    }
     ans <- .Call("Cfmelt", data, id.vars, measure.vars, 
             as.logical(variable.factor), as.logical(value.factor), 
             variable.name, value.name, as.logical(na.rm), 
