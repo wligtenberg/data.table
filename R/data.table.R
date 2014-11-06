@@ -1987,7 +1987,11 @@ na.omit.data.table <- function (object, by = seq_along(object), invert = FALSE, 
     # compare the above to stats:::na.omit.data.frame
 }
 
-which_ <- function(x, bool) {
+# default functionality is identical to 'which'
+# but memory efficient version of which(!x) when 'bool=FALSE'
+# It is also twice as fast - effect is more pronounced 
+# on large vectors.
+which_ <- function(x, bool=TRUE) {
     .Call("Cwhichwrapper", x, bool)
 }
 
