@@ -1987,6 +1987,10 @@ na.omit.data.table <- function (object, by = seq_along(object), invert = FALSE, 
     # compare the above to stats:::na.omit.data.frame
 }
 
+which_ <- function(x, bool) {
+    .Call("Cwhichwrapper", x, bool)
+}
+
 is.na.data.table <- function (x) {
     if (!cedta()) return(`is.na.data.frame`(x))
     do.call("cbind", lapply(x, "is.na"))
