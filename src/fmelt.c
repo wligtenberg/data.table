@@ -290,10 +290,11 @@ SEXP checkVars(SEXP DT, SEXP id, SEXP measure, Rboolean verbose) {
 }
 
 struct processData {
-    SEXP idcols, valuecols, narm;
+    SEXP idcols, valuecols, naidx;
     int lids, lvalues, lmax, lmin, protecti, totlen, nrow;
     int *isfactor, *leach, *isidentical;
     SEXPTYPE *maxtype;
+    Rboolean narm;
 };
 
 void preprocess(SEXP DT, SEXP id, SEXP measure, SEXP varnames, SEXP valnames, Rboolean verbose, struct processData *data) {
@@ -353,18 +354,19 @@ SEXP getvaluecols(SEXP DT, SEXP dtnames, Rboolean narm, Rboolean valfactor, Rboo
     SEXP tmp, seqcols, thiscol, thisvaluecols, target, ansvals, thisidx, flevels, clevels;
     Rboolean coerced=FALSE, thisfac=FALSE, *isordered, copyattr = FALSE, thisvalfactor;
     size_t size;
+    data->narm = narm;
     for (i=0; i<data->lvalues; i++) {
         thisvaluecols = VECTOR_ELT(data->valuecols, i);
         if (!data->isidentical[i])
             warning("'measure.vars' [%s] are not all of the same type. By order of hierarchy, the molten data value column will be of type '%s'. All measure variables not of type '%s' will be coerced to. Check DETAILS in ?melt.data.table for more on coercion.\n", CHAR(STRING_ELT(concat(dtnames, thisvaluecols), 0)), type2char(data->maxtype[i]), type2char(data->maxtype[i]));
-        if (data->maxtype[i] == VECSXP && narm) {
+        if (data->maxtype[i] == VECSXP && data->narm) {
             if (verbose) Rprintf("The molten data value type is a list at item %d. 'na.rm=TRUE' is ignored.\n", i+1);
-            narm = FALSE;
+            data->narm = FALSE;
         }
     }
-    if (narm) {
+    if (data->narm) {
         seqcols = PROTECT(seq_int(data->lvalues, 1)); protecti++;
-        data->narm = PROTECT(allocVector(VECSXP, data->lmax)); protecti++;
+        data->naidx = PROTECT(allocVector(VECSXP, data->lmax)); protecti++;
         for (i=0; i<data->lmax; i++) {
             tmp = allocVector(VECSXP, data->lvalues); // takes columns of DT, no need to PROTECT
             for (j=0; j<data->lvalues; j++) {                
@@ -373,9 +375,9 @@ SEXP getvaluecols(SEXP DT, SEXP dtnames, Rboolean narm, Rboolean valfactor, Rboo
                 SET_VECTOR_ELT(tmp, j, VECTOR_ELT(DT, INTEGER(thisvaluecols)[idx]-1));
             }
             tmp = PROTECT(dt_na(tmp, seqcols));
-            SET_VECTOR_ELT(data->narm, i, which(tmp, FALSE));
+            SET_VECTOR_ELT(data->naidx, i, which(tmp, FALSE));
             UNPROTECT(1); // tmp
-            data->totlen += length(VECTOR_ELT(data->narm, i));
+            data->totlen += length(VECTOR_ELT(data->naidx, i));
         }
     } else data->totlen = data->nrow * data->lmax;
     flevels = PROTECT(allocVector(VECSXP, data->lmax)); protecti++;
@@ -398,14 +400,14 @@ SEXP getvaluecols(SEXP DT, SEXP dtnames, Rboolean narm, Rboolean valfactor, Rboo
                 thiscol = PROTECT(coerceVector(thiscol, TYPEOF(target)));
                 coerced = TRUE;
             }
-            if (narm) {
-                thisidx = VECTOR_ELT(data->narm, j);
+            if (data->narm) {
+                thisidx = VECTOR_ELT(data->naidx, j);
                 thislen = length(thisidx);
             }
             size = SIZEOF(thiscol);
             switch (TYPEOF(target)) {
                 case VECSXP :
-                if (narm) {
+                if (data->narm) {
                     for (k=0; k<thislen; k++)
                         SET_VECTOR_ELT(target, counter + k, VECTOR_ELT(thiscol, INTEGER(thisidx)[k]-1));
                 } else {
@@ -421,7 +423,7 @@ SEXP getvaluecols(SEXP DT, SEXP dtnames, Rboolean narm, Rboolean valfactor, Rboo
                         isordered[j] = isOrdered(thiscol);
                     } else SET_VECTOR_ELT(flevels, j, thiscol);
                 }
-                if (narm) {
+                if (data->narm) {
                     for (k=0; k<thislen; k++)
                         SET_STRING_ELT(target, counter + k, STRING_ELT(thiscol, INTEGER(thisidx)[k]-1));
                 } else {
@@ -429,7 +431,7 @@ SEXP getvaluecols(SEXP DT, SEXP dtnames, Rboolean narm, Rboolean valfactor, Rboo
                 }
                 break;
                 case REALSXP : 
-                if (narm) {
+                if (data->narm) {
                     for (k=0; k<thislen; k++)
                         REAL(target)[counter + k] = REAL(thiscol)[INTEGER(thisidx)[k]-1];
                 } else {
@@ -437,7 +439,7 @@ SEXP getvaluecols(SEXP DT, SEXP dtnames, Rboolean narm, Rboolean valfactor, Rboo
                 }
                 break;
                 case INTSXP : 
-                if (narm) {
+                if (data->narm) {
                     for (k=0; k<thislen; k++)
                         INTEGER(target)[counter + k] = INTEGER(thiscol)[INTEGER(thisidx)[k]-1];
                 } else {
@@ -445,7 +447,7 @@ SEXP getvaluecols(SEXP DT, SEXP dtnames, Rboolean narm, Rboolean valfactor, Rboo
                 }
                 break;
                 case LGLSXP :
-                if (narm) {
+                if (data->narm) {
                     for (k=0; k<thislen; k++)
                         LOGICAL(target)[counter + k] = LOGICAL(thiscol)[INTEGER(thisidx)[k]-1];
                 } else {
@@ -454,7 +456,7 @@ SEXP getvaluecols(SEXP DT, SEXP dtnames, Rboolean narm, Rboolean valfactor, Rboo
                 break;
                 default : error("Unknown column type '%s' for column '%s'.", type2char(TYPEOF(thiscol)), CHAR(STRING_ELT(dtnames, INTEGER(thisvaluecols)[idx]-1)));                
             }
-            if (narm) counter += thislen;
+            if (data->narm) counter += thislen;
             if (coerced) {
                 UNPROTECT(1); coerced = FALSE;
             }
@@ -473,7 +475,7 @@ SEXP getvaluecols(SEXP DT, SEXP dtnames, Rboolean narm, Rboolean valfactor, Rboo
     return(ansvals);
 }
 
-SEXP getvarcols(SEXP DT, SEXP dtnames, Rboolean narm, Rboolean varfactor, Rboolean verbose, struct processData *data) {
+SEXP getvarcols(SEXP DT, SEXP dtnames, Rboolean varfactor, Rboolean verbose, struct processData *data) {
     
     int i,j,k,cnt=0,counter=0, protecti=0, thislen, idx;
     SEXP ansvars, thisvaluecols, levels, target, matchvals;
@@ -487,8 +489,8 @@ SEXP getvarcols(SEXP DT, SEXP dtnames, Rboolean narm, Rboolean varfactor, Rboole
         matchvals = PROTECT(match(thisvaluecols, thisvaluecols, 0));
         for (j=0; j<data->lmax; j++) {
             idx = (j < data->leach[i]) ? j : 0;
-            if (narm) {
-                thislen = length(VECTOR_ELT(data->narm, j));
+            if (data->narm) {
+                thislen = length(VECTOR_ELT(data->naidx, j));
                 for (k=0; k<thislen; k++)
                     INTEGER(target)[counter + k] = INTEGER(matchvals)[idx];
                 counter += thislen;
@@ -501,18 +503,18 @@ SEXP getvarcols(SEXP DT, SEXP dtnames, Rboolean narm, Rboolean varfactor, Rboole
         setAttrib(target, R_ClassSymbol, mkString("factor"));
         // By default drops levels when entire column is removed due to NA
         // It should be this way, I think. If change needed, easy to fix, really.
-        if (narm) {
+        if (data->narm) {
             counter = 0;
             for (j=0; j<data->lmax; j++) {
-                if (length(VECTOR_ELT(data->narm, j)) > 0) counter++;
+                if (length(VECTOR_ELT(data->naidx, j)) > 0) counter++;
             }
         } else counter = data->lmax;
         levels = PROTECT(allocVector(STRSXP, counter));
         cnt = 0;
         for (j=0; j<data->lmax; j++) {
             idx = (j < data->leach[i]) ? j : 0;
-            if (narm) {
-                if (length(VECTOR_ELT(data->narm, j)) > 0)
+            if (data->narm) {
+                if (length(VECTOR_ELT(data->naidx, j)) > 0)
                     SET_STRING_ELT(levels, cnt++, STRING_ELT(dtnames, INTEGER(thisvaluecols)[idx]-1));
             } else SET_STRING_ELT(levels, j, STRING_ELT(dtnames, INTEGER(thisvaluecols)[idx]-1));
         }
@@ -527,7 +529,7 @@ SEXP getvarcols(SEXP DT, SEXP dtnames, Rboolean narm, Rboolean varfactor, Rboole
     return(ansvars);
 }
 
-SEXP getidcols(SEXP DT, SEXP dtnames, Rboolean narm, Rboolean verbose, struct processData *data) {
+SEXP getidcols(SEXP DT, SEXP dtnames, Rboolean verbose, struct processData *data) {
 
     int i,j,k, counter=0, thislen;
     SEXP ansids, thiscol, target, thisidx;
@@ -542,9 +544,9 @@ SEXP getidcols(SEXP DT, SEXP dtnames, Rboolean narm, Rboolean verbose, struct pr
         copyMostAttrib(thiscol, target); // all but names,dim and dimnames. And if so, we want a copy here, not keepattr's SET_ATTRIB.
         switch(TYPEOF(thiscol)) {
             case REALSXP :
-            if (narm) {
+            if (data->narm) {
                 for (j=0; j<data->lmax; j++) {
-                    thisidx = PROTECT(VECTOR_ELT(data->narm, j));
+                    thisidx = PROTECT(VECTOR_ELT(data->naidx, j));
                     thislen = length(thisidx);
                     for (k=0; k<thislen; k++)
                         REAL(target)[counter + k] = REAL(thiscol)[INTEGER(thisidx)[k]-1];
@@ -557,9 +559,9 @@ SEXP getidcols(SEXP DT, SEXP dtnames, Rboolean narm, Rboolean verbose, struct pr
             }
             break;
             case INTSXP :
-            if (narm) {
+            if (data->narm) {
                 for (j=0; j<data->lmax; j++) {
-                    thisidx = PROTECT(VECTOR_ELT(data->narm, j));
+                    thisidx = PROTECT(VECTOR_ELT(data->naidx, j));
                     thislen = length(thisidx);
                     for (k=0; k<thislen; k++)
                         INTEGER(target)[counter + k] = INTEGER(thiscol)[INTEGER(thisidx)[k]-1];
@@ -572,9 +574,9 @@ SEXP getidcols(SEXP DT, SEXP dtnames, Rboolean narm, Rboolean verbose, struct pr
             }
             break;
             case LGLSXP :
-            if (narm) {
+            if (data->narm) {
                 for (j=0; j<data->lmax; j++) {
-                    thisidx = PROTECT(VECTOR_ELT(data->narm, j));
+                    thisidx = PROTECT(VECTOR_ELT(data->naidx, j));
                     thislen = length(thisidx);
                     for (k=0; k<thislen; k++)
                         LOGICAL(target)[counter + k] = LOGICAL(thiscol)[INTEGER(thisidx)[k]-1];
@@ -587,9 +589,9 @@ SEXP getidcols(SEXP DT, SEXP dtnames, Rboolean narm, Rboolean verbose, struct pr
             }
             break;
             case STRSXP :
-            if (narm) {
+            if (data->narm) {
                 for (j=0; j<data->lmax; j++) {
-                    thisidx = PROTECT(VECTOR_ELT(data->narm, j));
+                    thisidx = PROTECT(VECTOR_ELT(data->naidx, j));
                     thislen = length(thisidx);
                     for (k=0; k<thislen; k++)
                         SET_STRING_ELT(target, counter + k, STRING_ELT(thiscol, INTEGER(thisidx)[k]-1));
@@ -650,8 +652,8 @@ SEXP fmelt(SEXP DT, SEXP id, SEXP measure, SEXP varfactor, SEXP valfactor, SEXP 
         ans = PROTECT(duplicate(ans)); protecti++;
     } else {
         ansvals = PROTECT(getvaluecols(DT, dtnames, narm, LOGICAL(valfactor)[0], verbose, &data)); protecti++;
-        ansvars = PROTECT(getvarcols(DT, dtnames, narm, LOGICAL(varfactor)[0], verbose, &data)); protecti++;
-        ansids  = PROTECT(getidcols(DT, dtnames, narm, verbose, &data)); protecti++;
+        ansvars = PROTECT(getvarcols(DT, dtnames, LOGICAL(varfactor)[0], verbose, &data)); protecti++;
+        ansids  = PROTECT(getidcols(DT, dtnames, verbose, &data)); protecti++;
 
         // populate 'ans'
         ans = allocVector(VECSXP, data.lids+(data.lvalues*2));
