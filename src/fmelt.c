@@ -396,7 +396,7 @@ SEXP getvaluecols(SEXP DT, SEXP dtnames, Rboolean narm, Rboolean valfactor, Rboo
                 copyMostAttrib(thiscol, target);
                 copyattr = TRUE;
             }
-            if (TYPEOF(thiscol) != TYPEOF(target) && !isFactor(thiscol)) {
+            if (TYPEOF(thiscol) != TYPEOF(target) && (data->maxtype[i] == VECSXP || !isFactor(thiscol))) {
                 thiscol = PROTECT(coerceVector(thiscol, TYPEOF(target)));
                 coerced = TRUE;
             }
