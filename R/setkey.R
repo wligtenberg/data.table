@@ -330,7 +330,7 @@ CJ <- function(..., sorted = TRUE)
     l
 }
 
-frankv <- function(x, na.last=TRUE, order=1L, ties.method=c("average", "first", "random", "max", "min")) {
+frankv = function(x, by=seq_along(x), ties.method=c("average", "first", "random", "max", "min", "dense"), na.last=TRUE) {
     ties.method = match.arg(ties.method)
     na.last = as.logical(na.last)
     if (!length(na.last)) stop('length(na.last) = 0')
@@ -343,44 +343,32 @@ frankv <- function(x, na.last=TRUE, order=1L, ties.method=c("average", "first", 
         .Call(Csetlistelt, xx, 1L, x)
         xx
     }
-    if (is.atomic(x)) x = as_list(x)
-    else {
-        n = vapply(x, length, 0L)
-        if (any(n<max(n))) stop("All elements in input list x must be of same length")
+    if (is.atomic(x)) {
+        if (!missing(by) && !is.null(by)) stop("x is a single vector, non-NULL 'by' doesn't make sense")
+        by = 1L
+        x = as_list(x)
+    } else {
+        if (is.character(by)) by = chmatch(by, names(x))
+        by = as.integer(by)
     }
-    shallow_list <- function(x) {
-        lx = length(x); sx = seq_len(lx)
-        xx = vector("list", lx)
-        point(xx, sx, x, sx)
-    }
-    remove_na <- function(x) {
-        na = is_na(x)
-        xx = shallow_list(x)
-        setDT(xx)
-        .Call(CsubsetDT, xx, which(!na), seq_along(xx))
-    }
-    ties_random <- function(x) {
-        lx = length(x); sx = seq_len(lx)
-        xx = vector("list", lx+1L)
-        point(xx, sx, x, sx)
-        .Call(Csetlistelt, xx, lx+1L, stats::runif(length(x[[1L]])))
-        xx
-    }
+    x = .Call(Cshallowwrapper, x, seq_along(x)) # shallow copy even if list..
+    setDT(x)
     if (ties.method == "random") {
         # seems inefficient to subset, but have to do to get same results as base
         # is okay because it's just for the case where na.last=NA *and* ties="random"
-        if (is.na(na.last)) x = remove_na(x)
-        x = ties_random(x)
+        if (is.na(na.last)) x = na.omit(x, by)
+        set(x, j="..stats_runif..", value = stats::runif(nrow(x)))
+        by = c(by, ncol(x))
     }
-    xorder  = forderv(x, sort=TRUE, retGrp=TRUE, order=order, na.last=na.last)
-    xstart  = attr(xorder, 'starts', exact=TRUE)
+    xorder  = forderv(x, by=by, sort=TRUE, retGrp=TRUE, na.last=na.last)
+    xstart  = attr(xorder, 'starts')
     xsorted = FALSE
     if (!length(xorder)) {
         xsorted = TRUE
         xorder  = seq_along(x[[1L]])
     }
     ans = switch(ties.method, 
-           average = , min = , max = {
+           average = , min = , max =, dense =, runlength = {
                rank = .Call(Cfrank, xorder, xstart, uniqlengths(xstart, length(xorder)), ties.method)
                if (is.na(na.last) && xorder[1L] == 0L) {
                    idx = which(rank != 0L)
