@@ -95,9 +95,14 @@ dcast.data.table(DT, A + B ~ C, fun.agg=funs(mean,
       .(function(x) sum(x, na.rm=TRUE))), value.var="val1")
 
 # mean on val1 and paste on val2
-dcast.data.table(DT, A + B ~ C, fun.agg= funs(.(mean, vars="val1"), 
+dcast.data.table(DT, A + B ~ C, fun.agg=funs(.(mean, vars="val1"), 
      .(function(x) paste(x, collapse=""), vars="val2")), 
      value.var= c("val1", "val2"))
+
+# mean and sum on all "var1"; using ... for na.rm=TRUE
+dcast.data.table(DT, A + B ~ C, fun.agg=funs(mean, sum), 
+     value.var= c("val1"), na.rm=TRUE)
+
 }
 \seealso{
   \code{\link{melt.data.table}}, \url{http://had.co.nz/reshape/}
