@@ -90,6 +90,10 @@ DT = data.table(A = c(1,1,1,1,1,2,2,2,2,2,2,2),
 # multiple value.vars
 dcast.data.table(DT, A + B ~ D, value.var=c("val1", "val2"))
 
+# mean and sum on 'val1'; using ... for na.rm=TRUE
+dcast.data.table(DT, A + B ~ C, fun.agg=funs(mean, sum), 
+     value.var= c("val1"), na.rm=TRUE)
+
 # multiple fun.aggregate, sum with na.rm=TRUE *and* mean for 'val1'
 dcast.data.table(DT, A + B ~ C, fun.agg=funs(mean, 
       .(function(x) sum(x, na.rm=TRUE))), value.var="val1")
@@ -98,11 +102,6 @@ dcast.data.table(DT, A + B ~ C, fun.agg=funs(mean,
 dcast.data.table(DT, A + B ~ C, fun.agg=funs(.(mean, vars="val1"), 
      .(function(x) paste(x, collapse=""), vars="val2")), 
      value.var= c("val1", "val2"))
-
-# mean and sum on all "var1"; using ... for na.rm=TRUE
-dcast.data.table(DT, A + B ~ C, fun.agg=funs(mean, sum), 
-     value.var= c("val1"), na.rm=TRUE)
-
 }
 \seealso{
   \code{\link{melt.data.table}}, \url{http://had.co.nz/reshape/}
