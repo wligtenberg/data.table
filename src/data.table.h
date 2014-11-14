@@ -34,6 +34,7 @@ SEXP reorder(SEXP x, SEXP order);
 
 // fcast.c
 SEXP vec_init(R_len_t n, SEXP val);
+SEXP coerce_to_char(SEXP s, SEXP env);
 
 // vecseq.c
 SEXP vecseq(SEXP x, SEXP len, SEXP clamp);
@@ -61,9 +62,6 @@ SEXP dogroups(SEXP dt, SEXP dtcols, SEXP groups, SEXP grpcols, SEXP jiscols, SEX
 
 // bmerge.c
 SEXP bmerge(SEXP left, SEXP right, SEXP leftcols, SEXP rightcols, SEXP isorted, SEXP xoArg, SEXP rollarg, SEXP rollends, SEXP nomatch, SEXP retFirst, SEXP retLength, SEXP allLen1);
-
-// fcast.c
-SEXP coerce_to_char(SEXP s, SEXP env);
 
 // frank.c
 SEXP dt_na(SEXP x, SEXP cols);

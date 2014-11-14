@@ -3427,8 +3427,8 @@ set.seed(1)
 x <- data.table(a=rep(1:5, each=5), b=runif(25))
 ### adding all extra arguments for no verbose during "test.data.table()" to all dcast.data.table tests
 test(1150.1, dcast.data.table(x, " a~ . ", value.var="b", fun=length), data.table(a=1:5, b=5L, key="a"))
-test(1150.2, dcast.data.table(x, "a ~  c ", value.var="b"), error="Column 'c' not found")
-test(1150.3, dcast.data.table(x, a ~  a, value.var="c"), error="'value.var' column 'c' not found")
+test(1150.2, dcast.data.table(x, "a ~  c ", value.var="b"), error="not found or of unknown type")
+test(1150.3, dcast.data.table(x, a ~  a, value.var="c"), error="are not found in 'data'.")
 
 # test uniqlengths
 set.seed(45)
@@ -3746,7 +3746,11 @@ if ("package:reshape2" %in% search()) {
                  a3=sample(letters[1:3], 10, TRUE), # no factor
                  b=factor(sample(tail(letters, 5), 10, replace=TRUE)))
     dt <- as.data.table(df)
-    test(1198.3, setkey(setDT(dcast(df, a1+a2+a3~b, drop=FALSE, value.var="b")), a1,a2,a3), dcast.data.table(dt, a1+a2+a3~b, drop=FALSE, value.var="b"))
+    ans1 <- setkey(setDT(dcast(df, a1+a2+a3~b, drop=FALSE, value.var="b")), a1,a2,a3)
+    # dcast.data.table preserves attributes wherever possible, even "factors"...
+    ans2 <- dcast.data.table(dt, a1+a2+a3~b, drop=FALSE, value.var="b")
+    ans2[, c("v", "x", "y", "z") := lapply(.SD, as.character), .SDcols=c("v", "x", "y", "z")]
+    test(1198.3, ans1, ans2)
 }
 
 DT = data.table(id=1:2, val1=6:1, val2=6:1)   # 5380
@@ -4531,7 +4535,7 @@ test(1294.31, dt[, e := list("bla2")]$e, rep("bla2", 3))
 
 # FR #5357, when LHS evaluates to integer(0), provide warning and return dt, not an error.
 dt = data.table(a = 1:5, b1 = 1:5, b2 = 1:5)
-test(1295, dt[, grep("c", names(d)) := NULL], dt, warning="length(LHS) = 0, meaning no columns to delete or assign RHS to")
+test(1295, dt[, grep("c", names(dt)) := NULL], dt, warning="length(LHS) = 0, meaning no columns to delete or assign RHS to")
 
 # Updating logical column in one-row DT (corruption of new R 3.1 internal globals for TRUE, FALSE and NA)
 DT = data.table(a=1:6, b=c(TRUE,FALSE))
@@ -4633,7 +4637,7 @@ test(1313.22, DT[, list(y=max(y, na.rm=TRUE)), by=x], DT[c(5,10)])
 
 # bug git #693 - dcast.data.table error message improvement:
 dt <- data.table(x=c(1,1), y=c(2,2), z = 3:4)
-test(1314, dcast.data.table(dt, x ~ y, value.var="z", fun.aggregate=identity), error="Aggregating function provided to argument 'fun.aggregate' should always return a length 1 vector")
+test(1314, dcast.data.table(dt, x ~ y, value.var="z", fun.aggregate=identity), error="Aggregating function(s) should take vector inputs and return a single value ")
 
 # bug #688 - preserving attributes
 DT = data.table(id = c(1,1,2,2), ty = c("a","b","a","b"), da = as.Date("2014-06-20"))
@@ -4832,7 +4836,7 @@ test(1346.2, dcast.data.table(DT, id ~ k, value.var="v", subset=.(bla), fun.aggr
 
 # issues/715
 DT <- data.table(id=rep(1:2, c(3,2)), k=c(letters[1:3], letters[1:2]), v=1:5)
-test(1347.1, dcast.data.table(DT, id ~ k, fun.aggregate=last, value.var="v"), error="Aggregating function provided to argument 'fun.aggregate' should always return a length 1 vector")
+test(1347.1, dcast.data.table(DT, id ~ k, fun.aggregate=last, value.var="v"), error="Aggregating function(s) should take vector inputs and return a single value")
 test(1347.2, dcast.data.table(DT, id ~ k, fun.aggregate=last, value.var="v", fill=NA_integer_), data.table(id=1:2, a=c(1L, 4L), b=c(2L,5L), c=c(3L,NA_integer_), key="id"))
 
 # .N now available in i
